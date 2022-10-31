@@ -37,6 +37,15 @@ contract Game is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     // Used for added randomness
     uint64 counter;
 
+    /////////////////// Modifiers ////////////////////
+
+    // Verifies if the payer is alive (hp < 0)
+    modifier onlyAlivePlayer {
+        // Will revert if the player doesn't exist too
+        require(PlayerHp() != 0," Player health is zero, can't cast spells !!!");
+        _;
+    }
+
     /////////////////// Contract Initialization ////////////////////
 
     // Upgradable contract has no constructor, we need to initialise the OwnableUpgradeable explicitly
@@ -74,14 +83,13 @@ contract Game is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
         // Appointing a new Boss
         RulingBoss = BossName;
-
     }
 
     /////////////////// Player Actions //////////////////////////////
 
     // Allows users to generate playable Character
     function generateCharacter() external {
-        require(!playerCharactersMap[msg.sender].exists, "Your address already have a generated Character !!!");
+        require(!playerCharactersMap[msg.sender].exists, "Your address already has a generated Character !!!");
         Character memory newCharacter;
 
         // Generate random values for player Character properties;
@@ -95,7 +103,7 @@ contract Game is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     }
 
     // Allows players to attack the Boss that rules the contract
-    function attack() external {
+    function attack() external onlyAlivePlayer {
         // Will revert if the Boss doesn't exist too
         require(BossHp() != 0," Ruling boss is dead !!!");
 
@@ -120,12 +128,8 @@ contract Game is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             playerCharactersMap[msg.sender].hp -= BossDamage(); // Player hp drops
     }
 
-
     // Allows Level 2 player to heal his teammate
-    function heal(address teammate) external {
-        // Will revert if the player doesn't exist too
-        require(PlayerHp() != 0," Player health is zero, can't cast spells !!!");
-
+    function heal(address teammate) external onlyAlivePlayer {
         require(playerCharactersMap[teammate].exists," Nobody to heal on that address !!!");
         require(teammate != msg.sender, "Can't heal yourself !!!");
 
@@ -137,8 +141,7 @@ contract Game is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     }
 
     // Enables Level 3 players to cast a fireball (24 hours cooldown !!!)
-    function castFireball() external {
-        require(PlayerHp() != 0, "Player health is zero, can't cast spells !!!");
+    function castFireball() external onlyAlivePlayer {
         require(isLevel3(),"Only Level 3 players can cast a Fireball !!!");
         require(cooldowns[msg.sender] < block.timestamp + 24 hours, "The fireball spell is still in the cooldown !!!");
 
@@ -236,8 +239,5 @@ contract Game is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         randomValue = uint64(uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, counter))) % MaxValue);
         unchecked { counter++; }
     }
-
-
-
 
 }
